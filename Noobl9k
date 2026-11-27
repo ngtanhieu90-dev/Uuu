@@ -1,0 +1,553 @@
+-- Xdl9k Mobile Hub (Full Features + Fake Ghost & Animation Pack)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Xóa GUI cũ nếu đã chạy trước đó
+local guiParent = (gethui and gethui()) or CoreGui
+if guiParent:FindFirstChild("Xdl9k_Mobile_Hub") then
+    guiParent:FindFirstChild("Xdl9k_Mobile_Hub"):Destroy()
+end
+
+-- Cấu hình trạng thái
+local Config = {
+    AutoShoot = false,
+    AutoSlash = false,
+    FOVCircle = false,
+    FOVRadius = 132,
+    CamAim = false,
+    AimPart = "Head",
+    SpeedEnabled = false,
+    WalkSpeed = 24,
+    JumpPower = 50,
+    Noclip = false,
+    ESP = false,
+    HitboxExpander = false,
+    HitboxSize = 4,
+    FakeGhost = false,
+    AnimPack = "Ninja"
+}
+
+-- Tạo ScreenGui chính
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "Xdl9k_Mobile_Hub"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = guiParent
+
+-- ==========================================
+-- 1. NÚT TRÒN NỔI CHO ĐIỆN THOẠI (Xdl9k)
+-- ==========================================
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Name = "Xdl9k_Toggle"
+ToggleBtn.Size = UDim2.new(0, 56, 0, 56)
+ToggleBtn.Position = UDim2.new(0.16, 0, 0.25, 0)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
+ToggleBtn.Text = "Xdl9k"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.TextSize = 14
+ToggleBtn.AutoButtonColor = false
+ToggleBtn.Parent = ScreenGui
+
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(1, 0)
+ToggleCorner.Parent = ToggleBtn
+
+local ToggleStroke = Instance.new("UIStroke")
+ToggleStroke.Color = Color3.fromRGB(55, 110, 190)
+ToggleStroke.Thickness = 1.8
+ToggleStroke.Parent = ToggleBtn
+
+-- ==========================================
+-- 2. BẢNG BẬT NHANH INVISIBLE EMOTE
+-- ==========================================
+local QuickGhostFrame = Instance.new("Frame")
+QuickGhostFrame.Name = "QuickGhostFrame"
+QuickGhostFrame.Size = UDim2.new(0, 145, 0, 62)
+QuickGhostFrame.Position = UDim2.new(0.08, 0, 0.36, 0)
+QuickGhostFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 28)
+QuickGhostFrame.BorderSizePixel = 0
+QuickGhostFrame.Visible = true
+QuickGhostFrame.Parent = ScreenGui
+
+local QGCorner = Instance.new("UICorner")
+QGCorner.CornerRadius = UDim.new(0, 8)
+QGCorner.Parent = QuickGhostFrame
+
+local QGTitle = Instance.new("TextLabel")
+QGTitle.Size = UDim2.new(1, 0, 0, 22)
+QGTitle.BackgroundTransparency = 1
+QGTitle.Text = "Invisible Emote"
+QGTitle.TextColor3 = Color3.fromRGB(230, 230, 230)
+QGTitle.Font = Enum.Font.GothamBold
+QGTitle.TextSize = 11
+QGTitle.Parent = QuickGhostFrame
+
+local QGBtn = Instance.new("TextButton")
+QGBtn.Size = UDim2.new(0.88, 0, 0, 30)
+QGBtn.Position = UDim2.new(0.06, 0, 0, 25)
+QGBtn.BackgroundColor3 = Color3.fromRGB(190, 40, 40)
+QGBtn.Text = "TẮT"
+QGBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+QGBtn.Font = Enum.Font.GothamBold
+QGBtn.TextSize = 13
+QGBtn.Parent = QuickGhostFrame
+
+local QGBtnCorner = Instance.new("UICorner")
+QGBtnCorner.CornerRadius = UDim.new(0, 6)
+QGBtnCorner.Parent = QGBtn
+
+-- Nút bấm nổi Auto Shoot riêng cho điện thoại (dễ bật/tắt khi chiến đấu)
+local QuickShootBtn = Instance.new("TextButton")
+QuickShootBtn.Name = "QuickShootBtn"
+QuickShootBtn.Size = UDim2.new(0, 96, 0, 36)
+QuickShootBtn.Position = UDim2.new(0.72, 0, 0.52, 0)
+QuickShootBtn.BackgroundColor3 = Color3.fromRGB(190, 40, 40)
+QuickShootBtn.Text = "Auto Shoot: OFF"
+QuickShootBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+QuickShootBtn.Font = Enum.Font.GothamBold
+QuickShootBtn.TextSize = 11
+QuickShootBtn.Parent = ScreenGui
+
+local QSCorner = Instance.new("UICorner")
+QSCorner.CornerRadius = UDim.new(0, 8)
+QSCorner.Parent = QuickShootBtn
+
+-- Hàm hỗ trợ kéo thả mượt trên điện thoại
+local function MakeDraggable(guiObject)
+    local dragging, dragInput, dragStart, startPos
+    guiObject.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = guiObject.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    guiObject.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            guiObject.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+MakeDraggable(ToggleBtn)
+MakeDraggable(QuickGhostFrame)
+MakeDraggable(QuickShootBtn)
+
+-- ==========================================
+-- 3. KHUNG MENU CHÍNH (Xdl9k)
+-- ==========================================
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 340, 0, 275)
+MainFrame.Position = UDim2.new(0.5, -170, 0.5, -135)
+MainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 27)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(45, 45, 52)
+MainStroke.Thickness = 1.5
+MainStroke.Parent = MainFrame
+
+MakeDraggable(MainFrame)
+
+-- Header
+local Header = Instance.new("Frame")
+Header.Size = UDim2.new(1, 0, 0, 38)
+Header.BackgroundTransparency = 1
+Header.Parent = MainFrame
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(0.6, 0, 1, 0)
+TitleLabel.Position = UDim2.new(0, 14, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "Xdl9k"
+TitleLabel.TextColor3 = Color3.fromRGB(245, 245, 245)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextSize = 16
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = Header
+
+-- Nút thu nhỏ đỏ góc phải trên
+local MinBtn = Instance.new("TextButton")
+MinBtn.Size = UDim2.new(0, 26, 0, 24)
+MinBtn.Position = UDim2.new(1, -36, 0.5, -12)
+MinBtn.BackgroundColor3 = Color3.fromRGB(210, 45, 45)
+MinBtn.Text = "▯"
+MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinBtn.Font = Enum.Font.GothamBold
+MinBtn.TextSize = 13
+MinBtn.Parent = Header
+
+local MinCorner = Instance.new("UICorner")
+MinCorner.CornerRadius = UDim.new(0, 5)
+MinCorner.Parent = MinBtn
+
+MinBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+end)
+
+ToggleBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- Thanh Tab (Chính | Người chơi | Visual | Misc)
+local TabBar = Instance.new("Frame")
+TabBar.Size = UDim2.new(1, -24, 0, 30)
+TabBar.Position = UDim2.new(0, 12, 0, 40)
+TabBar.BackgroundTransparency = 1
+TabBar.Parent = MainFrame
+
+local TabLayout = Instance.new("UIListLayout")
+TabLayout.FillDirection = Enum.FillDirection.Horizontal
+TabLayout.Padding = UDim.new(0, 6)
+TabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+TabLayout.Parent = TabBar
+
+local Tabs = {}
+local Pages = {}
+local TabNames = {"Chính", "Người chơi", "Visual", "Misc"}
+
+local PageContainer = Instance.new("Frame")
+PageContainer.Size = UDim2.new(1, -24, 1, -82)
+PageContainer.Position = UDim2.new(0, 12, 0, 76)
+PageContainer.BackgroundTransparency = 1
+PageContainer.Parent = MainFrame
+
+for i, name in ipairs(TabNames) do
+    local tabBtn = Instance.new("TextButton")
+    tabBtn.Size = UDim2.new(0.235, 0, 1, 0)
+    tabBtn.BackgroundColor3 = (i == 1) and Color3.fromRGB(68, 68, 74) or Color3.fromRGB(32, 32, 36)
+    tabBtn.Text = name
+    tabBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
+    tabBtn.Font = Enum.Font.GothamSemibold
+    tabBtn.TextSize = 12
+    tabBtn.Parent = TabBar
+
+    local tCorner = Instance.new("UICorner")
+    tCorner.CornerRadius = UDim.new(0, 6)
+    tCorner.Parent = tabBtn
+
+    local page = Instance.new("ScrollingFrame")
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.BackgroundTransparency = 1
+    page.BorderSizePixel = 0
+    page.ScrollBarThickness = 3
+    page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    page.Visible = (i == 1)
+    page.Parent = PageContainer
+
+    local pLayout = Instance.new("UIListLayout")
+    pLayout.Padding = UDim.new(0, 8)
+    pLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    pLayout.Parent = page
+
+    Tabs[name] = tabBtn
+    Pages[name] = page
+
+    tabBtn.MouseButton1Click:Connect(function()
+        for tName, btn in pairs(Tabs) do
+            btn.BackgroundColor3 = (tName == name) and Color3.fromRGB(68, 68, 74) or Color3.fromRGB(32, 32, 36)
+            Pages[tName].Visible = (tName == name)
+        end
+    end)
+end
+
+-- ==========================================
+-- HÀM TẠO NÚT TOGGLE & THANH TRƯỢT SLIDER
+-- ==========================================
+local function CreateToggle(pageName, labelText, defaultState, callback)
+    local state = defaultState
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -4, 0, 34)
+    btn.BackgroundColor3 = state and Color3.fromRGB(35, 165, 75) or Color3.fromRGB(205, 42, 42)
+    btn.Text = labelText .. ": " .. (state and "ON" or "OFF")
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 13
+    btn.Parent = Pages[pageName]
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    local function setState(newState)
+        state = newState
+        btn.BackgroundColor3 = state and Color3.fromRGB(35, 165, 75) or Color3.fromRGB(205, 42, 42)
+        btn.Text = labelText .. ": " .. (state and "ON" or "OFF")
+        callback(state)
+    end
+
+    btn.MouseButton1Click:Connect(function()
+        setState(not state)
+    end)
+
+    return setState
+end
+
+local function CreateSlider(pageName, labelText, minVal, maxVal, defaultVal, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -4, 0, 44)
+    frame.BackgroundColor3 = Color3.fromRGB(32, 32, 37)
+    frame.Parent = Pages[pageName]
+
+    local fCorner = Instance.new("UICorner")
+    fCorner.CornerRadius = UDim.new(0, 6)
+    fCorner.Parent = frame
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -16, 0, 20)
+    lbl.Position = UDim2.new(0, 8, 0, 3)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = labelText .. ": " .. tostring(defaultVal)
+    lbl.TextColor3 = Color3.fromRGB(235, 235, 235)
+    lbl.Font = Enum.Font.GothamSemibold
+    lbl.TextSize = 12
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = frame
+
+    local bar = Instance.new("Frame")
+    bar.Size = UDim2.new(1, -18, 0, 6)
+    bar.Position = UDim2.new(0, 9, 0, 28)
+    bar.BackgroundColor3 = Color3.fromRGB(58, 58, 66)
+    bar.BorderSizePixel = 0
+    bar.Parent = frame
+
+    local bCorner = Instance.new("UICorner")
+    bCorner.CornerRadius = UDim.new(1, 0)
+    bCorner.Parent = bar
+
+    local ratio = (defaultVal - minVal) / (maxVal - minVal)
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(ratio, 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(40, 185, 85)
+    fill.BorderSizePixel = 0
+    fill.Parent = bar
+
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(1, 0)
+    fillCorner.Parent = fill
+
+    local knob = Instance.new("Frame")
+    knob.Size = UDim2.new(0, 14, 0, 14)
+    knob.Position = UDim2.new(ratio, -7, 0.5, -7)
+    knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    knob.BorderSizePixel = 0
+    knob.Parent = bar
+
+    local kCorner = Instance.new("UICorner")
+    kCorner.CornerRadius = UDim.new(1, 0)
+    kCorner.Parent = knob
+
+    local sliding = false
+    local function updateSlide(inputPos)
+        local relX = math.clamp((inputPos.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+        local val = math.floor(minVal + (maxVal - minVal) * relX)
+        fill.Size = UDim2.new(relX, 0, 1, 0)
+        knob.Position = UDim2.new(relX, -7, 0.5, -7)
+        lbl.Text = labelText .. ": " .. tostring(val)
+        callback(val)
+    end
+
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            sliding = true
+            updateSlide(input.Position)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if sliding and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+            updateSlide(input.Position)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            sliding = false
+        end
+    end)
+end
+
+-- ==========================================
+-- 4. LOGIC CHỨC NĂNG CHÍNH & FAKE GHOST
+-- ==========================================
+local setGhostMenuState
+local setShootMenuState
+
+local function SyncAutoShootUI(enabled)
+    Config.AutoShoot = enabled
+    QuickShootBtn.BackgroundColor3 = enabled and Color3.fromRGB(35, 165, 75) or Color3.fromRGB(190, 40, 40)
+    QuickShootBtn.Text = "Auto Shoot: " .. (enabled and "ON" or "OFF")
+end
+
+local function ToggleFakeGhost(enabled)
+    Config.FakeGhost = enabled
+    QGBtn.BackgroundColor3 = enabled and Color3.fromRGB(35, 165, 75) or Color3.fromRGB(190, 40, 40)
+    QGBtn.Text = enabled and "BẬT" or "TẮT"
+
+    local char = LocalPlayer.Character
+    if char then
+        for _, obj in ipairs(char:GetDescendants()) do
+            if obj:IsA("BasePart") and obj.Name ~= "HumanoidRootPart" then
+                obj.LocalTransparencyModifier = enabled and 0.65 or 0
+            elseif obj:IsA("Decal") then
+                obj.Transparency = enabled and 0.65 or 0
+            end
+        end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.HipHeight = enabled and 1.6 or 0
+        end
+    end
+end
+
+QGBtn.MouseButton1Click:Connect(function()
+    local nextState = not Config.FakeGhost
+    if setGhostMenuState then
+        setGhostMenuState(nextState)
+    else
+        ToggleFakeGhost(nextState)
+    end
+end)
+
+QuickShootBtn.MouseButton1Click:Connect(function()
+    local nextState = not Config.AutoShoot
+    if setShootMenuState then
+        setShootMenuState(nextState)
+    else
+        SyncAutoShootUI(nextState)
+    end
+end)
+
+local AnimPacks = {
+    ["Ninja"] = { idle = "http://www.roblox.com/asset/?id=656117400", run = "http://www.roblox.com/asset/?id=656118852", jump = "http://www.roblox.com/asset/?id=656117878" },
+    ["Levitation"] = { idle = "http://www.roblox.com/asset/?id=616006778", run = "http://www.roblox.com/asset/?id=616010382", jump = "http://www.roblox.com/asset/?id=616008936" },
+    ["Cartoony"] = { idle = "http://www.roblox.com/asset/?id=742637544", run = "http://www.roblox.com/asset/?id=742638842", jump = "http://www.roblox.com/asset/?id=742637942" },
+    ["Zombie"] = { idle = "http://www.roblox.com/asset/?id=616158929", run = "http://www.roblox.com/asset/?id=616163682", jump = "http://www.roblox.com/asset/?id=616161997" }
+}
+
+local function ApplyAnimationPack(packName)
+    local char = LocalPlayer.Character
+    local animate = char and char:FindFirstChild("Animate")
+    local pack = AnimPacks[packName]
+    if animate and pack then
+        pcall(function()
+            animate.idle.Animation1.AnimationId = pack.idle
+            animate.run.RunAnim.AnimationId = pack.run
+            animate.jump.JumpAnim.AnimationId = pack.jump
+        end)
+    end
+end
+
+-- ==========================================
+-- 5. NỘI DUNG TỪNG TAB
+-- ==========================================
+setShootMenuState = CreateToggle("Chính", "Auto Shoot", false, function(v)
+    SyncAutoShootUI(v)
+end)
+
+CreateToggle("Chính", "Nút Bắn Nhanh Mobile", true, function(v)
+    QuickShootBtn.Visible = v
+end)
+
+CreateToggle("Chính", "Auto Slash", false, function(v) Config.AutoSlash = v end)
+CreateToggle("Chính", "FOV Circle", false, function(v) Config.FOVCircle = v end)
+CreateSlider("Chính", "FOV Radius", 50, 350, 132, function(v) Config.FOVRadius = v end)
+CreateToggle("Chính", "Cam Aim", false, function(v) Config.CamAim = v end)
+
+setGhostMenuState = CreateToggle("Người chơi", "Fake Ghost (Invisible)", false, function(v)
+    ToggleFakeGhost(v)
+end)
+
+CreateToggle("Người chơi", "Hiện Bảng Bật Nhanh Ghost", true, function(v)
+    QuickGhostFrame.Visible = v
+end)
+
+local PackOrder = {"Ninja", "Levitation", "Cartoony", "Zombie"}
+local packIdx = 1
+local PackBtn = Instance.new("TextButton")
+PackBtn.Size = UDim2.new(1, -4, 0, 34)
+PackBtn.BackgroundColor3 = Color3.fromRGB(45, 110, 200)
+PackBtn.Text = "Animation Pack: Ninja (Bấm đổi)"
+PackBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+PackBtn.Font = Enum.Font.GothamBold
+PackBtn.TextSize = 13
+PackBtn.Parent = Pages["Người chơi"]
+local pbCorner = Instance.new("UICorner")
+pbCorner.CornerRadius = UDim.new(0, 6)
+pbCorner.Parent = PackBtn
+
+PackBtn.MouseButton1Click:Connect(function()
+    packIdx = (packIdx % #PackOrder) + 1
+    Config.AnimPack = PackOrder[packIdx]
+    PackBtn.Text = "Animation Pack: " .. Config.AnimPack .. " (Bấm đổi)"
+    ApplyAnimationPack(Config.AnimPack)
+end)
+
+CreateToggle("Người chơi", "Tăng Tốc Chạy (Speed)", false, function(v) Config.SpeedEnabled = v end)
+CreateSlider("Người chơi", "Tốc Độ (WalkSpeed)", 16, 120, 24, function(v) Config.WalkSpeed = v end)
+CreateToggle("Người chơi", "Đi Xuyên Tường (Noclip)", false, function(v) Config.Noclip = v end)
+
+CreateToggle("Visual", "ESP Người Chơi", false, function(v) Config.ESP = v end)
+CreateToggle("Visual", "Hitbox Mở Rộng", false, function(v) Config.HitboxExpander = v end)
+CreateSlider("Visual", "Kích Thước Hitbox", 2, 15, 4, function(v) Config.HitboxSize = v end)
+
+local RejoinBtn = Instance.new("TextButton")
+RejoinBtn.Size = UDim2.new(1, -4, 0, 34)
+RejoinBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+RejoinBtn.Text = "Vào Lại Server (Rejoin)"
+RejoinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RejoinBtn.Font = Enum.Font.GothamBold
+RejoinBtn.TextSize = 13
+RejoinBtn.Parent = Pages["Misc"]
+local rjCorner = Instance.new("UICorner")
+rjCorner.CornerRadius = UDim.new(0, 6)
+rjCorner.Parent = RejoinBtn
+RejoinBtn.MouseButton1Click:Connect(function()
+    game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+end)
+
+-- ==========================================
+-- 6. VÒNG LẶP REALTIME (MOBILE AUTO SHOOT & CHỐNG TELE VỀ KHI VA VẬT CẢN)
+-- ==========================================
+local FOVDrawing
+pcall(function()
+    FOVDrawing = Drawing.new("Circle")
+    FOVDrawing.Thickness = 1.5
+    FOVDrawing.NumSides = 64
+    FOVDrawing.Color = Color3.fromRGB(255, 255, 255)
+    FOVDrawing.Filled = false
+    FOVDrawing.Visible = false
+end)
+
+local function GetClosestEnemyInFOV(overrideRadius)
+    local closest, shortestDist = nil, (overrideRadius or Config.FOVRadius)
+    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                local isTeammate = (LocalPlayer.Team ~= nil and plr.Team == LocalPlayer.Team)
+                if not isTeammate then
+         
